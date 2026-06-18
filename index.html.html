@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRISM CORP — Halftone</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f0efeb;
+    --panel: #ffffff;
+    --ink: #0a0a0a;
+    --mid: #d4d2cc;
+    --accent: #0a0a0a;
+    --mono: 'Source Code Pro', monospace;
+    --display: 'Source Code Pro', monospace;
+  }
+
+  body {
+    font-family: var(--mono);
+    background: var(--bg);
+    color: var(--ink);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  #sidebar {
+    width: 320px;
+    min-width: 320px;
+    height: 100vh;
+    background: var(--panel);
+    border-right: 1px solid var(--mid);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 28px;
+    overflow-y: auto;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .logo-text {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    line-height: 1;
+  }
+  .logo-sub {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #888;
+    margin-top: 2px;
+    margin-left: 48px;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #999;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    margin-top: 28px;
+  }
+
+  .option-group { display: flex; flex-direction: column; gap: 4px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 0; }
+
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 2px 0;
+    user-select: none;
+    transition: opacity .15s;
+  }
+  .opt:hover { opacity: .7; }
+
+  .radio-box {
+    width: 20px; height: 20px;
+    border: 1.5px solid var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-family: var(--mono);
+    position: relative;
+  }
+  .radio-box::before { content: ' '; }
+  .opt.active .radio-box::before { content: '●'; }
+
+  .radio-box .swatch {
+    width: 20px; height: 20px;
+    position: absolute;
+    pointer-events: none;
+  }
+  .opt.active .radio-box .swatch { display: none; }
+  .opt:not(.active) .radio-box::before { content: ''; }
+  .color-opt .radio-box::before { content: ''; }
+  .color-opt.active .radio-box::before { content: '●'; }
+
+  .mix-hint {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: #bbb;
+    margin-top: 8px;
+    line-height: 1.6;
+    min-height: 14px;
+  }
+
+  #drop-zone {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #0a0a0a;
+    border: 1.5px solid #0a0a0a;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 8px;
+    transition: border-color .2s;
+  }
+  #drop-zone:hover { border-color: #555; }
+  #drop-zone.dragover { border-color: #888; }
+  #drop-zone img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  #drop-zone .placeholder { color: #444; font-size: 11px; letter-spacing: 2px; text-align: center; line-height: 2; }
+  #file-input { display: none; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .slider-row input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 2px; background: var(--ink); outline: none; cursor: pointer;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px; background: var(--ink); border-radius: 0; cursor: pointer;
+  }
+  .slider-val { font-size: 11px; width: 30px; text-align: right; flex-shrink: 0; }
+
+  #btn-render {
+    margin-top: 24px;
+    border: 1.5px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 10px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s, color .15s;
+    width: 100%;
+  }
+  #btn-render:hover { background: var(--ink); color: #fff; }
+
+  .dl-row {
+    margin-top: auto;
+    padding-top: 28px;
+    display: flex;
+    gap: 16px;
+  }
+  .btn-dl {
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    text-align: left;
+    opacity: .3;
+    transition: opacity .2s;
+    padding: 0;
+    white-space: nowrap;
+  }
+  .btn-dl.ready { opacity: 1; }
+  .btn-dl.ready:hover { text-decoration: underline; }
+
+  #preview {
+    flex: 1;
+    background: #d6d4ce;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  #preview canvas { max-width: 98%; max-height: 98%; display: none; box-shadow: 0 8px 60px rgba(0,0,0,.18); }
+  .preview-hint { font-size: 11px; letter-spacing: 3px; color: #aaa; text-transform: uppercase; }
+
+  #processing {
+    position: absolute; inset: 0;
+    background: rgba(214,212,206,.85);
+    display: none; align-items: center; justify-content: center;
+    font-size: 11px; letter-spacing: 4px; color: #555;
+  }
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+
+  <!-- LOGO -->
+  <div class="logo">
+    <img src="logo.svg" alt="PRISM CORP" class="logo-img">
+  </div>
+
+  <!-- FORMES -->
+  <div class="section-label">forme</div>
+  <div class="option-group two-col" id="shape-group">
+    <label class="opt active" data-val="circle">
+      <span class="radio-box"></span> cercle
+    </label>
+    <label class="opt" data-val="neg" id="neg-opt">
+      <span class="radio-box"></span> négatif
+    </label>
+    <label class="opt" data-val="triangle">
+      <span class="radio-box"></span> triangle
+    </label>
+    <label class="opt" style="visibility:hidden"></label>
+    <label class="opt" data-val="rectangle">
+      <span class="radio-box"></span> rectangle
+    </label>
+  </div>
+  <div class="mix-hint" id="mix-hint"></div>
+
+  <!-- COULEURS -->
+  <div class="section-label">couleur</div>
+  <div class="option-group two-col" id="color-group">
+    <label class="opt color-opt active" data-color="#7d0ced" data-bg="#f0efeb">
+      <span class="radio-box" style="border-color:#7d0ced">
+        <span class="swatch" style="background:#7d0ced"></span>
+      </span> violet
+    </label>
+    <label class="opt color-opt" data-color="#9cf0e3" data-bg="#e8eef7">
+      <span class="radio-box" style="border-color:#9cf0e3">
+        <span class="swatch" style="background:#9cf0e3"></span>
+      </span> cyan
+    </label>
+    <label class="opt color-opt" data-color="#ff0032" data-bg="#f7eaea">
+      <span class="radio-box" style="border-color:#ff0032">
+        <span class="swatch" style="background:#ff0032"></span>
+      </span> rouge
+    </label>
+    <label class="opt color-opt" data-color="#ff1790" data-bg="#eaf2e9">
+      <span class="radio-box" style="border-color:#ff1790">
+        <span class="swatch" style="background:#ff1790"></span>
+      </span> rose
+    </label>
+    <label class="opt color-opt" data-color="#fff660" data-bg="#fdf5e6">
+      <span class="radio-box" style="border-color:#fff660">
+        <span class="swatch" style="background:#fff660"></span>
+      </span> jaune
+    </label>
+    <label class="opt color-opt" data-color="#00f073" data-bg="#f0e8f7">
+      <span class="radio-box" style="border-color:#00f073">
+        <span class="swatch" style="background:#00f073"></span>
+      </span> vert
+    </label>
+  </div>
+
+  <!-- IMAGE INPUT -->
+  <div class="section-label">image source</div>
+  <div id="drop-zone" title="Cliquer ou glisser une image">
+    <img id="preview-thumb" alt="">
+    <div class="placeholder" id="drop-placeholder">[ ↓ ]<br>déposer / cliquer</div>
+  </div>
+  <input type="file" id="file-input" accept="image/*">
+
+  <!-- TAILLE FORMES -->
+  <div class="section-label">taille des points</div>
+  <div class="slider-row">
+    <input type="range" id="dot-size" min="4" max="40" value="10" step="1">
+    <span class="slider-val" id="dot-val">10</span>
+  </div>
+
+  <button id="btn-render">[ → ] générer</button>
+
+  <div class="dl-row">
+    <button class="btn-dl" id="btn-jpeg">[ ↓ ] jpeg HD</button>
+    <button class="btn-dl" id="btn-svg">[ ↓ ] svg transparent</button>
+  </div>
+
+</aside>
+
+<main id="preview">
+  <span class="preview-hint" id="hint">en attente d'une image</span>
+  <canvas id="canvas"></canvas>
+  <div id="processing">RENDU EN COURS…</div>
+</main>
+
+<script>
+  // ──  TRIANGLE SVG PATCH (viewBox 43.8 × 39.46) ──
+  // We'll pre-render it into an offscreen canvas at various sizes for speed,
+  // and also keep the raw path string for SVG export.
+  const TRIANGLE_PATH_D = "M41.18,38.54c2.55-1.63,3.37-4.97,1.86-7.59L26.8,2.83c-1.01-1.75-2.88-2.83-4.89-2.83s-3.88,1.08-4.89,2.83L.76,30.98c-1.51,2.62-.69,5.97,1.86,7.59.94.6,1.99.88,3.03.88,1.79,0,3.54-.85,4.64-2.42,2.65-3.8,7-6.07,11.62-6.07s8.96,2.26,11.61,6.04c1.74,2.48,5.12,3.15,7.66,1.52Z";
+  const TRI_VW = 43.8, TRI_VH = 39.46; // original viewBox
+
+  // Cache: size → ImageBitmap of the triangle at that pixel size, colored
+  const triCache = new Map();
+
+  // Build a colored triangle stamp at given pixel size
+  function buildTriStamp(size, color) {
+    const key = `${size}_${color}`;
+    if (triCache.has(key)) return triCache.get(key);
+
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const x = c.getContext('2d');
+
+    const scale = size / Math.max(TRI_VW, TRI_VH);
+    const offX = (size - TRI_VW * scale) / 2;
+    const offY = (size - TRI_VH * scale) / 2;
+
+    x.save();
+    x.translate(offX, offY);
+    x.scale(scale, scale);
+    x.fillStyle = color;
+    const p = new Path2D(TRIANGLE_PATH_D);
+    x.fill(p);
+    x.restore();
+
+    triCache.set(key, c);
+    return c;
+  }
+
+  // ── State ──
+  const shapes = new Set(['circle']);
+  let negative = false;
+  let sourceImage = null;
+  let inkColor = '#7d0ced';
+  let bgColor  = '#f0efeb';
+
+  let lastDots = [];
+  let lastW = 0, lastH = 0;
+
+  // ── Mix hint ──
+  const mixHint = document.getElementById('mix-hint');
+  function updateHint() {
+    mixHint.textContent = shapes.size > 1 ? `[ ${shapes.size} formes ] alternance aléatoire` : '';
+  }
+
+  // ── Shape / negative toggles ──
+  document.getElementById('shape-group').querySelectorAll('.opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const val = opt.dataset.val;
+      if (!val) return;
+      if (val === 'neg') {
+        negative = !negative;
+        opt.classList.toggle('active', negative);
+        return;
+      }
+      if (shapes.has(val)) {
+        if (shapes.size === 1) return;
+        shapes.delete(val);
+        opt.classList.remove('active');
+      } else {
+        shapes.add(val);
+        opt.classList.add('active');
+      }
+      updateHint();
+    });
+  });
+
+  // ── Color selector ──
+  document.getElementById('color-group').querySelectorAll('.opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.getElementById('color-group').querySelectorAll('.opt').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      inkColor = opt.dataset.color;
+      bgColor  = opt.dataset.bg;
+      triCache.clear(); // invalidate stamp cache on color change
+    });
+  });
+
+  // ── File input ──
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const thumb       = document.getElementById('preview-thumb');
+  const placeholder = document.getElementById('drop-placeholder');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  function loadFile(file) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      thumb.src = url;
+      thumb.style.display = 'block';
+      placeholder.style.display = 'none';
+    };
+    img.src = url;
+  }
+
+  // ── Slider ──
+  const dotSlider = document.getElementById('dot-size');
+  const dotVal    = document.getElementById('dot-val');
+  dotSlider.addEventListener('input', () => { dotVal.textContent = dotSlider.value; });
+
+  // ── LCG random ──
+  function makeRand(seed) {
+    let s = seed >>> 0;
+    return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 0x100000000; };
+  }
+
+  // ── Draw one shape on canvas ctx ──
+  function drawShape(ctx, shape, cx, cy, radius, color) {
+    if (shape === 'triangle') {
+      // Use pre-rendered stamp
+      const size = Math.ceil(radius * 2);
+      if (size < 1) return;
+      const stamp = buildTriStamp(size, color);
+      ctx.drawImage(stamp, cx - size / 2, cy - size / 2);
+    } else {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (shape === 'circle') {
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      } else if (shape === 'rectangle') {
+        const s = radius * 2;
+        ctx.rect(cx - s / 2, cy - s / 2, s, s);
+      }
+      ctx.fill();
+    }
+  }
+
+  // ── Render ──
+  const btnRender = document.getElementById('btn-render');
+  const canvas    = document.getElementById('canvas');
+  const ctx       = canvas.getContext('2d');
+  const hint      = document.getElementById('hint');
+  const proc      = document.getElementById('processing');
+
+  btnRender.addEventListener('click', () => {
+    if (!sourceImage) return;
+    triCache.clear();
+    proc.style.display = 'flex';
+    setTimeout(render, 30);
+  });
+
+  function render() {
+    const step = parseInt(dotSlider.value);
+    const shapeList = Array.from(shapes);
+    const rand = makeRand(0xDEADBEEF);
+
+    const sampleW = Math.min(sourceImage.naturalWidth, 2400);
+    const sampleH = Math.round(sourceImage.naturalHeight * sampleW / sourceImage.naturalWidth);
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = sampleW; offscreen.height = sampleH;
+    const octx = offscreen.getContext('2d');
+    octx.drawImage(sourceImage, 0, 0, sampleW, sampleH);
+    const data = octx.getImageData(0, 0, sampleW, sampleH).data;
+
+    const cols = Math.ceil(sampleW / step);
+    const rows = Math.ceil(sampleH / step);
+    canvas.width  = cols * step;
+    canvas.height = rows * step;
+    lastW = canvas.width;
+    lastH = canvas.height;
+    lastDots = [];
+
+    const dotColor = negative ? bgColor : inkColor;
+    const fillBg   = negative ? '#0a0a0a' : bgColor;
+
+    ctx.fillStyle = fillBg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const px  = Math.min(Math.floor(col * step + step / 2), sampleW - 1);
+        const py  = Math.min(Math.floor(row * step + step / 2), sampleH - 1);
+        const idx = (py * sampleW + px) * 4;
+
+        let lum = (0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]) / 255;
+        if (negative) lum = 1 - lum;
+
+        const radius = (step / 2 * 0.95) * (1 - lum);
+        if (radius < 0.5) continue;
+
+        const cx    = col * step + step / 2;
+        const cy    = row * step + step / 2;
+        const shape = shapeList[Math.floor(rand() * shapeList.length)];
+
+        drawShape(ctx, shape, cx, cy, radius, dotColor);
+        lastDots.push({ shape, cx, cy, radius });
+      }
+    }
+
+    canvas.style.display = 'block';
+    hint.style.display   = 'none';
+    proc.style.display   = 'none';
+    document.querySelectorAll('.btn-dl').forEach(b => b.classList.add('ready'));
+  }
+
+  // ── JPEG HD Download ──
+  document.getElementById('btn-jpeg').addEventListener('click', () => {
+    if (!document.getElementById('btn-jpeg').classList.contains('ready')) return;
+
+    const scale = 2;
+    const hd    = document.createElement('canvas');
+    hd.width    = lastW * scale;
+    hd.height   = lastH * scale;
+    const hctx  = hd.getContext('2d');
+
+    const dotColor = negative ? bgColor : inkColor;
+    hctx.fillStyle = negative ? '#0a0a0a' : bgColor;
+    hctx.fillRect(0, 0, hd.width, hd.height);
+    hctx.scale(scale, scale);
+
+    lastDots.forEach(({ shape, cx, cy, radius }) => {
+      drawShape(hctx, shape, cx, cy, radius, dotColor);
+    });
+
+    const link = document.createElement('a');
+    link.download = 'prism-halftone.jpg';
+    link.href = hd.toDataURL('image/jpeg', 0.97);
+    link.click();
+  });
+
+  // ── SVG Transparent Download ──
+  document.getElementById('btn-svg').addEventListener('click', () => {
+    if (!document.getElementById('btn-svg').classList.contains('ready')) return;
+
+    const color = negative ? bgColor : inkColor;
+    let paths = '';
+
+    lastDots.forEach(({ shape, cx, cy, radius }) => {
+      if (shape === 'triangle') {
+        // Scale + center the custom path inside its cell
+        const size = radius * 2;
+        const scale = size / Math.max(TRI_VW, TRI_VH);
+        const offX = cx - size / 2 + (size - TRI_VW * scale) / 2;
+        const offY = cy - size / 2 + (size - TRI_VH * scale) / 2;
+        paths += `<g transform="translate(${offX.toFixed(2)},${offY.toFixed(2)}) scale(${scale.toFixed(4)})"><path d="${TRIANGLE_PATH_D}"/></g>`;
+      } else if (shape === 'circle') {
+        paths += `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${radius.toFixed(2)}"/>`;
+      } else if (shape === 'rectangle') {
+        const s = radius * 2;
+        paths += `<rect x="${(cx - s/2).toFixed(2)}" y="${(cy - s/2).toFixed(2)}" width="${s.toFixed(2)}" height="${s.toFixed(2)}"/>`;
+      }
+    });
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${lastW}" height="${lastH}" viewBox="0 0 ${lastW} ${lastH}">
+  <g fill="${color}">${paths}</g>
+</svg>`;
+
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const link = document.createElement('a');
+    link.download = 'prism-halftone.svg';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  });
+</script>
+</body>
+</html>
